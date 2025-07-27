@@ -51,20 +51,20 @@
                     <h2 class="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
                     
                     <div class="flex justify-between mb-2">
-                        <span class="text-gray-600">Subtotal</span>
-                        <span class="text-gray-800">$239.98</span>
+                        <span class="text-gray-600"></span>
+                        <span class="text-gray-800"></span>
                     </div>
                     
                     <div class="flex justify-between mb-2">
-                        <span class="text-gray-600">Tax (10%)</span>
-                        <span class="text-gray-800">$24.00</span>
+                        <span class="text-gray-600"></span>
+                        <span class="text-gray-800"></span>
                     </div>
                     
                     <hr class="my-4">
                     
                     <div class="flex justify-between mb-6">
                         <span class="text-lg font-bold text-gray-800">Total</span>
-                        <span class="text-lg font-bold text-gray-800">$263.98</span>
+                        <span class="text-lg font-bold text-gray-800">${{total_price}}</span>
                     </div>
 
                     <!-- Coupon Code -->
@@ -81,9 +81,11 @@
                     </div>
 
                     <!-- Checkout Button -->
+                     <a href="{% url 'checkout_view' %}">
                     <button class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors">
                         Proceed to Checkout
                     </button>
+                    </a>
 
                     <!-- Continue Shopping -->
                     <button class="w-full text-purple-600 text-center mt-4 hover:text-purple-700">

@@ -3,7 +3,8 @@ from django.views import View
 from instructorApp.forms import InstructorCreateForm
 from django.contrib.auth import authenticate,login,logout
 from django.contrib import messages
-from instructorApp.models import Course,Cart
+from instructorApp.models import Course,Cart,Order,Module,Lesson
+from django.db.models import Sum
 # Create your views here.
 
 class StudentRegisterView(View):
@@ -39,7 +40,9 @@ class StudentLoginView(View):
 class StudentHome(View):
     def get(self,request):
         course_instances=Course.objects.all()
-        return render(request,'student_home.html',{'courses':course_instances})
+        purchased_courses=Order.objects.filter(student=request.user).values_list("course_objects",flat=True)  # [1,2,3]
+        print(purchased_courses,"===================")
+        return render(request,'student_home.html',{'courses':course_instances,'purchased_courses':purchased_courses})
     
 
 class CourseDetail(View):
@@ -59,8 +62,9 @@ class AddToCart(View):
 class CartSummary(View):
     def get(self,request):
         # cart_items=Cart.objects.filter(user_instance=request.user)
-        cart_items=request.user.cart_user.all()
-        return render(request,'student_cart_summary.html',{'cart_items':cart_items})
+        cart_items=request.user.cart_user.all()  # [cartobject1,cartobj1]
+        total_price=cart_items.values("course_instance__price").aggregate(total=Sum("course_instance__price")).get("total") #{'total':1000}
+        return render(request,'student_cart_summary.html',{'cart_items':cart_items,'total_price':total_price})
     
 
 class CartDelete(View):
@@ -68,4 +72,36 @@ class CartDelete(View):
         Cart.objects.get(id=kwargs.get("id")).delete()
         return redirect("cartsummary_view")
     
+
+class CheckOutView(View):
+    def get(self,request,*args,**kwargs):
+        cart_list=request.user.cart_user.all() #[cartobj,obj1]
+        total=sum([cart.course_instance.price for cart in cart_list])  #[500,300]
+        order_instance=Order.objects.create(student=request.user,total=total)
+        if cart_list:
+            for ci in cart_list:
+                order_instance.course_objects.add(ci.course_instance)
+                ci.delete()
+            order_instance.save()
+            return redirect('student_home')
+        
+class MyCourses(View):
+    def get(self,request,*args,**kwargs):
+        # my_orders=request.user.student_orders.all()
+        my_orders=Order.objects.filter(student=request.user)
+        return render(request,'student_courses_list.html',{'orders':my_orders})
     
+
+# http://127.0.0.1:8000/student/courses/1/watch?module=1&lesson=1
+# ? optional parameter values
+
+class LessonView(View):
+    def get(self,request,*args,**kwargs):
+        course_id=kwargs.get("course_id")
+        course_instance=Course.objects.get(id=course_id)
+        if "module" in request.GET:
+            module_id=request.GET.get("module")
+        if "lesson" in request.GET:
+            lesson_id=request.GET.get("lesson")
+        module_instance=Module.objects.get(id=module_id)
+        lesson_instance=Lesson.objects.get(id=lesson_id)

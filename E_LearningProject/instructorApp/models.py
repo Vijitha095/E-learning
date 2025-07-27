@@ -89,6 +89,16 @@ class Cart(models.Model):
         return self.course_instance.title
     
 
+class Order(models.Model):
+    course_objects=models.ManyToManyField(Course,related_name="course_orders")
+    student=models.ForeignKey(User,on_delete=models.CASCADE,related_name="student_orders")
+    is_paid=models.BooleanField(default=False)
+    rz_order_id=models.CharField(max_length=100,null=True)
+    total=models.DecimalField(decimal_places=2,max_digits=10,default=0)
+    ordered_date=models.DateField(auto_now_add=True)
+
+    
+
 
 
 
