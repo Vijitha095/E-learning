@@ -12,4 +12,5 @@ urlpatterns=[
     path('student/checkout',views.CheckOutView.as_view(),name="checkout_view"),
     path('student/mycourses',views.MyCourses.as_view(),name="mycourses_view"),
     path('student/courses/<int:course_id>/watch',views.LessonView.as_view(),name="lesson_view"),
+    path('student/payment/confirm',views.PaymentConfirmation.as_view(),name="payment_confirm")
 ]

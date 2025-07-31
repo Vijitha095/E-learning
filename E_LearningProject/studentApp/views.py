@@ -5,7 +5,11 @@ from django.contrib.auth import authenticate,login,logout
 from django.contrib import messages
 from instructorApp.models import Course,Cart,Order,Module,Lesson
 from django.db.models import Sum
+import razorpay
 # Create your views here.
+
+RZP_KEY_ID="rzp_test_tapimqsLV8XzBE"
+RZP_KEY_SECRET="70mIJHlipzSxvPIbjB1L2Js5"
 
 class StudentRegisterView(View):
     def get(self,request):
@@ -83,6 +87,24 @@ class CheckOutView(View):
                 order_instance.course_objects.add(ci.course_instance)
                 ci.delete()
             order_instance.save()
+
+            if total>0:
+                client=razorpay.Client(auth=(RZP_KEY_ID,RZP_KEY_SECRET))
+                print(client)
+                DATA={"amount":int(total),"currency":"INR","receipt":"rzp_receipt_1"}
+                payment=client.order.create(data=DATA)
+                print(payment)
+                rzp_order_id=payment.get("id")
+                order_instance.rz_order_id=rzp_order_id
+                order_instance.save()
+                context={
+                    "rzp_key_id":RZP_KEY_ID,
+                    "amount":int(total),
+                    "rzp_order_id":rzp_order_id
+                }
+
+                return render(request,'payment.html',context)
+
             return redirect('student_home')
         
 class MyCourses(View):
@@ -92,16 +114,42 @@ class MyCourses(View):
         return render(request,'student_courses_list.html',{'orders':my_orders})
     
 
-# http://127.0.0.1:8000/student/courses/1/watch?module=1&lesson=1
+# http://127.0.0.1:8000/student/courses/1/watch?module=1&lesson=2
 # ? optional parameter values
 
 class LessonView(View):
     def get(self,request,*args,**kwargs):
         course_id=kwargs.get("course_id")
         course_instance=Course.objects.get(id=course_id)
-        if "module" in request.GET:
-            module_id=request.GET.get("module")
-        if "lesson" in request.GET:
-            lesson_id=request.GET.get("lesson")
-        module_instance=Module.objects.get(id=module_id)
-        lesson_instance=Lesson.objects.get(id=lesson_id)
+        print(course_instance.modules.all().first().id,"+++++++++++++++")
+        module_id=request.GET.get("module") if "module" in request.GET else course_instance.modules.all().first().id
+        module_instance=Module.objects.get(id=module_id,course_instance=course_instance)
+        print(module_instance.lesson.all().first().id)
+        lesson_id=request.GET.get("lesson") if "lesson" in request.GET else module_instance.lesson.all().first().id
+        lesson_instance=Lesson.objects.get(id=lesson_id,module_instance=module_instance)
+        print(module_instance,"++++++++++")
+        print(lesson_instance,"++++++++++")
+
+        return render(request,'lesson_list.html',{"course":course_instance,"lesson":lesson_instance})
+
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+@method_decorator(csrf_exempt,name="dispatch")
+class PaymentConfirmation(View):
+    def post(self,request,*args,**kwargs):
+        print(request.POST)
+        import razorpay
+        client = razorpay.Client(auth=(RZP_KEY_ID, RZP_KEY_SECRET))
+        try:
+            client.utility.verify_payment_signature(request.POST)
+            print(request.POST)
+            order_id=request.POST.get("razorpay_order_id")
+            order_instance=Order.objects.get(rz_order_id=order_id)
+            order_instance.is_paid=True
+            order_instance.save()
+            print("payment success")
+        except:
+            print("pyment failed")
+        return redirect("student_home")
+
